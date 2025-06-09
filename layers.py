@@ -46,8 +46,8 @@ class LinearLayer:
             tuple: Initialized weights and biases as numpy arrays.
         """
         if method == "random":
-            weights = np.random.randn(self._out_features, self._in_features) * 0.01
-            bias = np.zeros((self._out_features, 1))
+            weights = np.random.randn(self._out_features, self._in_features) * np.sqrt(2.0 / self._in_features)
+            bias    = np.zeros((1, self._out_features))
             return weights, bias
 
     def forward(self, x: np.ndarray):
