@@ -59,9 +59,10 @@ def der_tanh(x):
 def softmax(x: np.ndarray):
     """Stable softmax for vector inputs."""
     assert isinstance(x, np.ndarray), f"x must be a numpy array but is {type(x)}"
-    # Subtract max for numerical stability
-    e_x = np.exp(x - np.max(x))
-    return e_x / np.sum(e_x)
+    shift = np.max(x, axis=1, keepdims=True)      # shape (batch_size, 1)
+    e_x = np.exp(x - shift)                        # shape (batch_size, n_l)
+    sum_e = np.sum(e_x, axis=1, keepdims=True)     # shape (batch_size, 1)
+    return e_x / sum_e                             # broadcasting to (batch_size, n_l)
 
 def der_softmax(x: np.ndarray):
     """
