@@ -1,59 +1,55 @@
-from typing import Callable, List
-
+import random
++
 import numpy as np
 
 from net import SignPredictor
-from activation_functions import der_relu, der_sigmoid, relu, sigmoid, softmax
-from loss_functions import der_entropy_loss, entropy_loss
+from activation_functions import der_relu, relu, softmax
+from loss_functions import entropy_loss
 from optimizer import Optimizer
 
 
 if __name__ == "__main__":
     optimizer = Optimizer(
-        lr = 0.1,
+        lr = 0.01,
         adam_args = {
             "beta_1": 0.9,
             "beta_2": 0.999,
             "epsilon": 1e-8,
         },
         lr_decay_type= "cosine",
-        total_epochs = 4000
+        total_epochs = 1000
         )
+    # Generate inputs:
+    inputs = [] #np.array([0.5, 0.5]).T]
+    targets = [] #np.array([0.5, 0.5]).T]
+
+    for i in range (20):
+        val = round(random.random(), 1)
+        if val > 0.5:
+            targets.append(np.array([1,0]))
+        elif val == 0.5:
+            continue #targets.append(np.array([0.5, 0.5]))
+        else:
+            targets.append(np.array([0,1]))
+        inputs.append(np.array([val, 1-val]))
+
+    inputs = np.array(inputs)
+    targets = np.array(targets)
+
     net = SignPredictor(
-        input_size = 4,
-        layer_sizes= [3, 4],
+        input_size = inputs.shape[1],
+        layer_sizes= [4, 2],
         activations = [relu, softmax],
         activations_der=[der_relu, None],
         loss_fn = entropy_loss,
         loss_fn_der= None,
         optimizer=optimizer
-
     )
-    np.matrix([
-        [1,0,0,0],
-        [0,1,0,0]
-    ])
-    inputs = [
-        np.array([[1, 0, 0, 0]]).T,
-        np.array([[0, 1, 0, 0]]).T,
-        np.array([[0, 0, 1, 0]]).T,
-        np.array([[0, 0, 0, 1]]).T,
-    ]
-
-    targets = [
-        np.array([[1, 0, 0, 0]]).T,
-        np.array([[0, 1, 0, 0]]).T,
-        np.array([[0, 0, 1, 0]]).T,
-        np.array([[0, 0, 0, 1]]).T,
-    ]
     t = 1
     for epoch in range(1000):
-        total_loss = 0
-        for x, y in zip(inputs, targets):
-            loss, pred = net.train_step(x, y, t)
-            total_loss += loss
-            t += 1
+        loss, pred = net.train_step(inputs, targets, t)
+        t += 1
         if epoch % 100 == 0:
-            print(f"Epoch {epoch}, Loss: {total_loss:.4f}, learning rate: {optimizer.current_lr}")
+            print(f"Epoch {epoch}, Loss: {loss:.4f}, learning rate: {optimizer.current_lr}")
         if epoch == 999:
-            print(f"Final Epoch prediction: {pred.round()}, target: {y}")
+            print(f"Final Epoch prediction: {pred[0].round()}, target: {targets[0]}, input:{inputs[0]}")
