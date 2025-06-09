@@ -2,7 +2,7 @@ from typing import Callable, List
 import numpy as np 
 from layers import LinearLayer
 from optimizer import Optimizer
-from loss_functions import entropy_loss, der_entropy_loss
+from loss_functions import binary_entropy_loss, entropy_loss, der_entropy_loss
 from activation_functions import sigmoid, relu, der_relu, der_sigmoid, softmax
 
 def create_network_architecture(
@@ -71,13 +71,13 @@ class SignPredictor:
         and passes the input through each layer sequentially.
 
         Args:
-            x (np.ndarray): Input array of shape (4,).
+            x (np.ndarray): Input array of shape (batch_sizte, input_features).
 
         Returns:
             np.ndarray: Model output from the final layer.
         """
-        assert x.shape == (self.input_size, 1), \
-            f"The input passed to the net is of shape {x.shape} but is supposed to be of shape {(self.input_size,1)}"
+        assert x.shape[1] == self.input_size, \
+            f"The input passed to the net is of shape {x.shape} but is supposed to be of shape (batch_size, {self.input_size})"
         for layer in self.layers:
             x = layer.forward(x)
         return x
@@ -89,11 +89,18 @@ class SignPredictor:
         dl/da (derivative of loss function at final output) x da/dz (derivative of activation function at last aggregate z)
         """
         output_layer = self.layers[-1]
-        if self.loss_fn is entropy_loss and output_layer.act_func is softmax:            
-            # For Cross-Entropy + Softmax, the derivative of loss function and final activation function can be combined as:
+        if self._check_loss_gradient_simplification(output_layer.act_func):            
             return output_layer.cache_dir["a_l"] - target
         else:
             return self.loss_fn_der(target, output_layer.cache_dir["a_l"]) * output_layer.act_func_der(output_layer.cache_dir["z_l"])
+
+    def _check_loss_gradient_simplification(self, act_func):
+        """
+        If the final layer uses softmax as the activation function and entropy loss is used or (as the 2-dim simplification) 
+        sigmoid is used with binary entropy loss, the derivative of loss function and output layer activation function can
+        be simplified to pred - gt (y_hat - y)
+        """
+        return (self.loss_fn.__name__ == "entropy_loss" and act_func.__name__ == "softmax") or (self.loss_fn.__name__ == "binary_entropy_loss" and act_func.__name__ == "sigmoid")
 
     def backward(self, grad):
         """
@@ -113,16 +120,16 @@ class SignPredictor:
     def predict(self, x: np.ndarray) -> np.ndarray:
         return self.forward(x)
 
-    def train_step(self, input, target, t:int):
+    def train_step(self, input_batch, target_batch, t:int):
         """Does a single training step with the received input"""
         # Forward pass
-        pred = self.predict(input)
+        pred = self.forward(input_batch)
         
         # Calculate loss
-        loss = self.loss_fn(target, pred)
+        loss = self.loss_fn(target_batch, pred)
 
         # Backpropagate
-        loss_gradient = self.loss_gradient(target)
+        loss_gradient = self.loss_gradient(target_batch)
         self.backward(loss_gradient)
         self.optimizer.step(t, self.layers)
         self.optimizer.zero_grad(self.layers)
