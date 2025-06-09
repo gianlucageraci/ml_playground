@@ -12,20 +12,20 @@ def entropy_loss(gt: np.ndarray, pred: np.ndarray):
         f"Pred and ground truth are supposed to have the same shape, but are {pred.shape} and {gt.shape}"
     eps = 1e-15
     pred = np.clip(pred, eps, 1 - eps)
-    return - np.sum(gt * np.log(pred))
+    return -np.mean(np.sum(gt * np.log(pred), axis=1))
 
 
 def binary_entropy_loss(gt, pred):
     """Calculate Cross Entropy loss
     an be used in the case that only a binary classification (e.g. 0 or 1) is implemented.
     Args:
-        x (np.array): values predicted by neural network
-        y (np.array): ground truth
+        x (np.array): values predicted by neural network of shape (batch_size, 1)
+        y (np.array): ground truth (batch_size, 1)
     """
-    m = pred.shape[1]
-    loss = - (pred * np.log(gt) + (1-pred) * np.log(1-gt))
-    empirical_loss = 1/m * np.nansum(loss)
-    return empirical_loss
+    epsilon = 1e-12
+    pred = np.clip(pred, epsilon, 1 - epsilon)
+    loss = - (gt * np.log(pred) + (1 - gt) * np.log(1 - pred))
+    return np.mean(loss)
 
 
 def der_entropy_loss(gt,pred):
@@ -37,3 +37,7 @@ def der_entropy_loss(gt,pred):
         y (np.array): ground truth of shape (out_features, 1)
     """
     return pred - gt
+
+
+def kl_divergence(p, q):
+    return np.sum(p * np.log(p / q))
