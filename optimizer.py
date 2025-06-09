@@ -39,8 +39,8 @@ class Optimizer:
         if self.lr_decay_type == "None":
             return self.base_lr
         if self.lr_decay_type == 'cosine':
-            return self.base_lr * (1 + math.cos(t * math.pi / self.total_epochs))
+            return 0.5 * self.base_lr * (1 + math.cos(t * math.pi / self.total_epochs))
         elif self.lr_decay_type == 'exponential':
             return self.base_lr * (0.9 ** t)  # Example exponential decay
         else:
-            raise ValueError(f"Unknown decay type: {self.decay_type}")
+            raise ValueError(f"Unknown decay type: {self.lr_decay_type}")
