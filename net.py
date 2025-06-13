@@ -1,6 +1,6 @@
 from typing import Callable, List
 import numpy as np 
-from layers import LinearLayer
+from layers import LinearLayer, DropOutLinearLayer
 from optimizer import Optimizer
 from loss_functions import binary_entropy_loss, entropy_loss, der_entropy_loss
 from activation_functions import sigmoid, relu, der_relu, der_sigmoid, softmax
@@ -9,7 +9,8 @@ def create_network_architecture(
     input_size: int,
     layer_sizes: List[int],
     activations: List[Callable],
-    activation_derivatives: List[Callable]
+    activation_derivatives: List[Callable], 
+    dropout_rate: float = 0
 ) -> List[LinearLayer]:
     """
     Constructs a list of LinearLayer objects defining a feedforward network.
@@ -29,13 +30,23 @@ def create_network_architecture(
     layers = []
     in_features = input_size
 
-    for out_features, act, act_der in zip(layer_sizes, activations, activation_derivatives):
-        layer = LinearLayer(
-            in_features=in_features,
-            out_features=out_features,
-            act_func=act,
-            act_func_der=act_der
-        )
+    for idx, (out_features, act, act_der) in enumerate(zip(layer_sizes, activations, activation_derivatives)):
+        if idx < len(layer_sizes) - 1:
+            layer = DropOutLinearLayer(
+                in_features=in_features,
+                out_features=out_features,
+                act_func=act,
+                act_func_der=act_der, 
+                drop_out_rate= dropout_rate
+            )
+        else:
+            layer = LinearLayer(
+                in_features=in_features,
+                out_features=out_features,
+                act_func=act,
+                act_func_der=act_der, 
+            ) #NOTE: No dropout in the final layer !!!
+
         layers.append(layer)
         in_features = out_features  # output of this layer is input to the next
 
@@ -45,10 +56,11 @@ class SignPredictor:
     def __init__(self, 
                  input_size: int,
                  layer_sizes: List[int],
-                 activations: List[callable],
-                 activations_der: List[callable],
-                 loss_fn, 
-                 loss_fn_der, 
+                 activations: List[Callable],
+                 activations_der: List[Callable],
+                 dropout_rate: float,
+                 loss_fn: Callable, 
+                 loss_fn_der: Callable, 
                  optimizer : Optimizer
                 ):
         """Initialize the sign predictor model with a loss function.
@@ -61,10 +73,11 @@ class SignPredictor:
         self.loss_fn = loss_fn
         self.loss_fn_der = loss_fn_der
         self.optimizer = optimizer
-        self.layers = create_network_architecture(input_size, layer_sizes, activations, activations_der)
+        #TODO: introduce builder class for net architecture
+        self.layers = create_network_architecture(input_size, layer_sizes, activations, activations_der, dropout_rate)
   
 
-    def forward(self, x):
+    def forward(self, x, training: bool = True):
         """Run a forward pass through the network.
 
         Constructs the network architecture with a hidden and output layer,
@@ -79,7 +92,7 @@ class SignPredictor:
         assert x.shape[1] == self.input_size, \
             f"The input passed to the net is of shape {x.shape} but is supposed to be of shape (batch_size, {self.input_size})"
         for layer in self.layers:
-            x = layer.forward(x)
+            x = layer.forward(x, training)
         return x
     
     def loss_gradient(self, target):
@@ -118,12 +131,12 @@ class SignPredictor:
                 grad = self.layers[layer_idx].backpropagate(grad, self.layers[layer_idx + 1].weights)
 
     def predict(self, x: np.ndarray) -> np.ndarray:
-        return self.forward(x)
+        return self.forward(x, training= False)
 
     def train_step(self, input_batch, target_batch, t:int):
         """Does a single training step with the received input"""
         # Forward pass
-        pred = self.forward(input_batch)
+        pred = self.forward(input_batch, training = True)
         
         # Calculate loss
         loss = self.loss_fn(target_batch, pred)

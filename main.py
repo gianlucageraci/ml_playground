@@ -37,9 +37,10 @@ if __name__ == "__main__":
 
     net = SignPredictor(
         input_size = inputs.shape[1],
-        layer_sizes= [4, 2],
+        layer_sizes= [8, 2],
         activations = [relu, softmax],
         activations_der=[der_relu, None],
+        dropout_rate= 0.5,
         loss_fn = entropy_loss,
         loss_fn_der= None,
         optimizer=optimizer

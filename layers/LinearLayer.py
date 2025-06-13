@@ -50,7 +50,7 @@ class LinearLayer:
             bias    = np.zeros((1, self._out_features))
             return weights, bias
 
-    def forward(self, x: np.ndarray):
+    def forward(self, x: np.ndarray, training: bool = True):
         """Perform forward pass through the layer.
 
         Applies a linear transformation followed by the activation function:
@@ -101,7 +101,7 @@ class LinearLayer:
         self.grad_b = np.sum(grad_l, axis = 0, keepdims=True)/ x.shape[0]
         return grad_l
     
-    def update_params(self, t:int, lr: float, beta_1, beta_2, epsilon):
+    def update_params(self, t:int, lr: float, weight_decay_lambda: float, beta_1:float, beta_2:float, epsilon:float):
         """Use ADAM to update layer parameters"""
         self.weights_m = beta_1 * self.weights_m + (1-beta_1) * self.grad_w
         self.weights_s = beta_2 * self.weights_s + (1-beta_2) * self.grad_w**2
@@ -114,9 +114,8 @@ class LinearLayer:
         bias_m_hat = self.bias_m / (1-beta_1**t)
         bias_s_hat = self.bias_s / (1-beta_2**t)
         
-        self.weights -= lr * weights_m_hat/(np.sqrt(weights_s_hat) + epsilon)
-        
-        self.bias -= lr * bias_m_hat/(np.sqrt(bias_s_hat) + epsilon)
+        self.weights = self.weights - lr * (weights_m_hat/(np.sqrt(weights_s_hat) + epsilon) + weight_decay_lambda*self.weights)
+        self.bias = self.bias - lr * bias_m_hat/(np.sqrt(bias_s_hat) + epsilon) #NOTE: no weight decay for bias
 
     def zero_grad(self):
         self.grad_w = np.zeros_like(self.weights)

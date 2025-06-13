@@ -20,16 +20,17 @@ class LearningRateDecay:
         
 
 class Optimizer:
-    def __init__(self, lr: float, adam_args: dict = None, lr_decay_type: str = "None", total_epochs: int = None):
+    def __init__(self, lr: float, adam_args: dict = None, lr_decay_type: str = "None", total_epochs: int = None, weight_decay_lambda: float = 0.0):
         self.base_lr = lr
         self.adam_args = adam_args
         self.lr_decay_type = lr_decay_type
         self.total_epochs = total_epochs
+        self.weight_decay_lambda = weight_decay_lambda
     
     def step(self, t:int, layers: List[LinearLayer]):
         self.current_lr = self.get_lr(t)
         for layer in layers:
-            layer.update_params(t, self.current_lr, **self.adam_args)
+            layer.update_params(t, self.current_lr, self.weight_decay_lambda, **self.adam_args)
 
     def zero_grad(self, layers: List[LinearLayer]):
         for layer in layers:
