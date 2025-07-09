@@ -118,5 +118,17 @@ class LinearLayer:
         self.bias = self.bias - lr * bias_m_hat/(np.sqrt(bias_s_hat) + epsilon) #NOTE: no weight decay for bias
 
     def zero_grad(self):
+        """
+        Reset the gradients of weights and biases to zero.
+
+        Note:
+        In this implementation, gradients are overwritten during backpropagation rather than accumulated.
+        Therefore, calling zero_grad() before backpropagation is not strictly necessary, since grad_w 
+        and grad_b are reassigned each batch.
+
+        However, zero_grad() is provided for clarity, consistency, and potential future extensions
+        (e.g., if gradient accumulation is introduced), ensuring no stale gradient values remain.
+        In PyTorch for example, gradients are accumulated by default instead of being replaced.
+        """
         self.grad_w = np.zeros_like(self.weights)
         self.grad_b = np.zeros_like(self.bias)
